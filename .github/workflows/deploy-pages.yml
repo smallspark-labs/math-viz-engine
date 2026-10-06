@@ -33,12 +33,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: playground/package-lock.json
 
       - name: Install playground dependencies
         working-directory: playground
-        run: npm ci
+        run: npm install
 
       - name: Build playground
         working-directory: playground
