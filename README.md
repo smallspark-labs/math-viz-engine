@@ -90,3 +90,6 @@ playground / learning app / teacher tool / video renderer / AI tutor
 7. Optional React / React Native adapters
 
 The engine should remain useful without any adapter: `spec -> normalized scene -> SVG` is the core contract.
+
+
+_Pages deployment is automated from `main` via GitHub Actions._
