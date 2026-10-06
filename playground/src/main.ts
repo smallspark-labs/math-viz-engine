@@ -21,7 +21,7 @@ app.innerHTML = `
     <p class="eyebrow">SmallSpark Labs · math-viz-engine</p>
     <h1>Don't just give the answer.<br />Show why it works.</h1>
     <p class="lead">
-      A deterministic visualization engine for elementary math concepts.
+      A deterministic visualization engine for elementary math concepts, built for reuse.
       This first playground explores equivalent fractions.
     </p>
   </section>
