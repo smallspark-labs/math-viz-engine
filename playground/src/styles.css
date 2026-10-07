@@ -315,3 +315,64 @@ code {
   .concept-card { min-height: 0; }
   .concept-copy { min-height: 0; }
 }
+
+
+.partition-line--removing {
+  transition: transform 560ms ease, opacity 560ms ease;
+  transform-origin: center;
+}
+
+.partition-line--removing.partition-line--removed {
+  transform: translateX(-50%) scaleY(0);
+  opacity: 0;
+}
+
+.addition-stage {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+
+.addition-target {
+  display: grid;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 250ms ease 480ms, transform 250ms ease 480ms;
+}
+
+.addition-target .whole { height: 52px; border-width: 2px; border-radius: 10px; }
+
+.addition-piece {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #6977e5;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 620ms cubic-bezier(.2,.8,.2,1);
+}
+
+.addition-piece--one { left: 0; width: 25%; }
+.addition-piece--two { left: 25%; width: 50%; transition-delay: 120ms; }
+
+.addition-stage--combine .addition-source {
+  opacity: 0.22;
+  transform: scale(0.96);
+}
+
+.addition-source { transition: opacity 360ms ease, transform 360ms ease; }
+
+.addition-stage--combine .addition-target {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.addition-stage--combine .addition-piece { transform: scaleX(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .partition-line--removing,
+  .addition-target,
+  .addition-piece,
+  .addition-source { transition: none; }
+}
