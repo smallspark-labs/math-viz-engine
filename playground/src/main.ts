@@ -1,54 +1,64 @@
-import "../../src/index.ts";
-import { renderSvg } from "../../src/index.ts";
+import {
+  compileFractionBarTimeline,
+  renderSvg,
+  type FractionBarTimeline,
+} from "../../src/index.ts";
 import "./styles.css";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root not found");
 
-const equivalents = [
-  { numerator: 1, denominator: 2 },
-  { numerator: 2, denominator: 4 },
-  { numerator: 4, denominator: 8 },
-  { numerator: 8, denominator: 16 },
-];
+const timeline: FractionBarTimeline = {
+  type: "fraction-bar-timeline",
+  initial: { type: "fraction-bar", numerator: 1, denominator: 2, label: "1/2" },
+  transitions: [
+    { type: "split-each-part", factor: 2, durationMs: 650 },
+    { type: "split-each-part", factor: 2, durationMs: 650 },
+    { type: "split-each-part", factor: 2, durationMs: 650 },
+  ],
+};
 
-let equivalentIndex = 0;
+const frames = compileFractionBarTimeline(timeline);
+let frameIndex = 0;
 let numerator = 1;
 let denominator = 2;
+let animating = false;
 
 app.innerHTML = `
   <section class="hero">
     <p class="eyebrow">SmallSpark Labs · math-viz-engine</p>
     <h1>Don't just give the answer.<br />Show why it works.</h1>
     <p class="lead">
-      A deterministic visualization engine for elementary math concepts, built for reuse.
-      This first playground explores equivalent fractions.
+      Math is easier to understand when you can see what changes — and what stays the same.
+      This playground turns equivalent fractions into a visible transformation.
     </p>
   </section>
 
   <section class="demo-card" aria-labelledby="equivalent-title">
     <div class="section-heading">
       <div>
-        <p class="kicker">Concept demo</p>
-        <h2 id="equivalent-title">Equivalent fractions keep the same size</h2>
+        <p class="kicker">State → transition → state</p>
+        <h2 id="equivalent-title">Why is 1/2 the same as 2/4?</h2>
       </div>
-      <button id="next-equivalent" type="button">Split into smaller parts</button>
+      <button id="next-equivalent" type="button">Split every part in 2</button>
     </div>
 
     <div class="equivalent-stage">
-      <div>
-        <p class="fraction-label" id="equivalent-label">1/2</p>
-        <div class="viz" id="equivalent-viz"></div>
+      <div class="fraction-readout">
+        <span class="fraction-label" id="equivalent-label">1/2</span>
+        <span class="equals-one-half">= one half</span>
       </div>
+      <div class="continuous-viz" id="equivalent-viz" aria-live="polite"></div>
+      <div class="timeline-row" id="timeline-row"></div>
       <p class="explanation" id="equivalent-explanation">
-        Half of the whole is filled. Splitting the same whole into more equal parts does not change its size.
+        Start with one whole split into 2 equal parts. One of those parts is filled.
       </p>
     </div>
   </section>
 
   <section class="playground-grid">
     <div class="panel">
-      <p class="kicker">Playground</p>
+      <p class="kicker">State playground</p>
       <h2>Try your own fraction</h2>
 
       <label>
@@ -67,27 +77,30 @@ app.innerHTML = `
     </div>
 
     <div class="panel code-panel">
-      <p class="kicker">Current DSL</p>
-      <h2>Serializable input</h2>
+      <p class="kicker">Transition DSL</p>
+      <h2>The math operation is data</h2>
       <pre id="dsl"></pre>
       <p class="note">
-        The engine turns this data into SVG. Future apps, lesson content, and AI-generated explanations can reuse the same contract.
+        Apps do not need to describe animation pixels. They describe the mathematical operation:
+        <code>split-each-part</code>. The engine derives the next valid state.
       </p>
     </div>
   </section>
 
   <section class="about">
-    <p class="kicker">Direction</p>
-    <h2>Engine first, products later</h2>
+    <p class="kicker">Engine direction</p>
+    <h2>Visualize mathematical change, not just mathematical state</h2>
     <p>
-      The core stays framework-agnostic. Learning apps, teacher tools, video generators, and AI tutors can sit on top of the same visualization primitives.
+      The same transition model can later power grouping, distribution, merging, rotation,
+      comparison, and other operations used by multiplication, division, fractions, and geometry.
     </p>
   </section>
 `;
 
 const equivalentViz = document.querySelector<HTMLDivElement>("#equivalent-viz")!;
-const equivalentLabel = document.querySelector<HTMLParagraphElement>("#equivalent-label")!;
+const equivalentLabel = document.querySelector<HTMLSpanElement>("#equivalent-label")!;
 const equivalentExplanation = document.querySelector<HTMLParagraphElement>("#equivalent-explanation")!;
+const timelineRow = document.querySelector<HTMLDivElement>("#timeline-row")!;
 const nextButton = document.querySelector<HTMLButtonElement>("#next-equivalent")!;
 const numeratorInput = document.querySelector<HTMLInputElement>("#numerator")!;
 const denominatorInput = document.querySelector<HTMLInputElement>("#denominator")!;
@@ -96,29 +109,91 @@ const denominatorValue = document.querySelector<HTMLOutputElement>("#denominator
 const customViz = document.querySelector<HTMLDivElement>("#custom-viz")!;
 const dsl = document.querySelector<HTMLElement>("#dsl")!;
 
+function continuousFractionMarkup(n: number, d: number, newLines: number[] = []) {
+  const filledPercent = (n / d) * 100;
+  const lines = Array.from({ length: d - 1 }, (_, index) => {
+    const position = ((index + 1) / d) * 100;
+    const isNew = newLines.includes(index + 1);
+    return `<span class="partition-line ${isNew ? "partition-line--new" : ""}" style="left:${position}%"></span>`;
+  }).join("");
+
+  return `
+    <div class="whole" role="img" aria-label="${n} out of ${d} equal parts">
+      <div class="whole-fill" style="width:${filledPercent}%"></div>
+      ${lines}
+    </div>
+  `;
+}
+
+function renderTimeline() {
+  timelineRow.innerHTML = frames.map(({ state }, index) => {
+    const active = index === frameIndex ? "timeline-step--active" : "";
+    return `<span class="timeline-step ${active}">${state.numerator}/${state.denominator}</span>`;
+  }).join('<span class="timeline-arrow">→</span>');
+}
+
 function renderEquivalent() {
-  const value = equivalents[equivalentIndex]!;
-  const label = `${value.numerator}/${value.denominator}`;
-  equivalentLabel.textContent = label;
-  equivalentViz.innerHTML = renderSvg({
-    type: "fraction-bar",
-    numerator: value.numerator,
-    denominator: value.denominator,
-    label,
-    width: 560,
-    height: 76,
-    gap: 3,
-  });
+  const frame = frames[frameIndex]!;
+  equivalentLabel.textContent = `${frame.state.numerator}/${frame.state.denominator}`;
+  equivalentViz.innerHTML = continuousFractionMarkup(
+    frame.state.numerator,
+    frame.state.denominator,
+  );
+  renderTimeline();
 
   equivalentExplanation.textContent =
-    equivalentIndex === 0
-      ? "Half of the whole is filled. Split the same whole into smaller equal parts."
-      : `The filled area is still exactly one half. Only the number of equal parts changed: ${label}.`;
+    frameIndex === 0
+      ? "Start with one whole split into 2 equal parts. One of those parts is filled."
+      : `We split every previous part into 2 smaller equal parts. Nothing moved and the filled area did not change, so ${frame.state.numerator}/${frame.state.denominator} is still one half.`;
 
   nextButton.textContent =
-    equivalentIndex === equivalents.length - 1
-      ? "Start again"
-      : "Split into smaller parts";
+    frameIndex === frames.length - 1 ? "Start again" : "Split every part in 2";
+
+  dsl.textContent = JSON.stringify(
+    frameIndex === 0 ? timeline.initial : frames[frameIndex]!.transition,
+    null,
+    2,
+  );
+}
+
+async function animateToNextFrame() {
+  if (animating) return;
+
+  if (frameIndex === frames.length - 1) {
+    frameIndex = 0;
+    renderEquivalent();
+    return;
+  }
+
+  animating = true;
+  nextButton.disabled = true;
+
+  const previous = frames[frameIndex]!.state;
+  const nextIndex = frameIndex + 1;
+  const next = frames[nextIndex]!.state;
+  const factor = next.denominator / previous.denominator;
+  const newLines = Array.from(
+    { length: previous.denominator },
+    (_, index) => index * factor + 1,
+  );
+
+  equivalentViz.innerHTML = continuousFractionMarkup(
+    next.numerator,
+    next.denominator,
+    newLines,
+  );
+
+  requestAnimationFrame(() => {
+    equivalentViz.querySelectorAll(".partition-line--new").forEach((line) => {
+      line.classList.add("partition-line--visible");
+    });
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 680));
+  frameIndex = nextIndex;
+  animating = false;
+  nextButton.disabled = false;
+  renderEquivalent();
 }
 
 function renderCustom() {
@@ -139,13 +214,9 @@ function renderCustom() {
   };
 
   customViz.innerHTML = renderSvg(spec);
-  dsl.textContent = JSON.stringify(spec, null, 2);
 }
 
-nextButton.addEventListener("click", () => {
-  equivalentIndex = (equivalentIndex + 1) % equivalents.length;
-  renderEquivalent();
-});
+nextButton.addEventListener("click", animateToNextFrame);
 
 numeratorInput.addEventListener("input", () => {
   numerator = Number(numeratorInput.value);
