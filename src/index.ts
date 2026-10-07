@@ -6,7 +6,15 @@ export type {
   MathVizSpec,
   NormalizedFractionBar,
 } from "./types.js";
+export type {
+  FractionBarTimeline,
+  FractionBarTimelineFrame,
+  FractionBarTransition,
+  SplitEachPartTransition,
+} from "./timeline.js";
+
 export { normalizeFractionBar, renderFractionBarSvg } from "./fractionBar.js";
+export { compileFractionBarTimeline, splitEachPart } from "./timeline.js";
 
 export function renderSvg(spec: MathVizSpec): string {
   switch (spec.type) {
