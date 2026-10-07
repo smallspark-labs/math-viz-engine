@@ -1,5 +1,8 @@
 import {
+  addFractions,
+  compareFractions,
   compileFractionBarTimeline,
+  mergeParts,
   renderSvg,
   type FractionBarTimeline,
 } from "../../src/index.ts";
@@ -56,6 +59,32 @@ app.innerHTML = `
     </div>
   </section>
 
+  <section class="concept-grid">
+    <article class="concept-card">
+      <p class="kicker">Merge</p>
+      <h2>4/8 → 2/4</h2>
+      <div class="mini-viz" id="merge-viz"></div>
+      <button class="secondary-button" id="merge-button" type="button">Merge every 2 parts</button>
+      <p class="concept-copy" id="merge-copy">Adjacent small parts can be grouped back together without changing the amount.</p>
+    </article>
+
+    <article class="concept-card">
+      <p class="kicker">Compare</p>
+      <h2>Which is larger?</h2>
+      <div class="compare-stack" id="compare-viz"></div>
+      <button class="secondary-button" id="compare-button" type="button">Compare 1/2 and 3/4</button>
+      <p class="concept-copy" id="compare-copy">Put fractions against the same whole to compare their actual sizes.</p>
+    </article>
+
+    <article class="concept-card">
+      <p class="kicker">Add</p>
+      <h2>1/4 + 2/4</h2>
+      <div class="mini-viz" id="add-viz"></div>
+      <button class="secondary-button" id="add-button" type="button">Combine the parts</button>
+      <p class="concept-copy" id="add-copy">When the parts are the same size, we can count them together.</p>
+    </article>
+  </section>
+
   <section class="playground-grid">
     <div class="panel">
       <p class="kicker">State playground</p>
@@ -108,6 +137,15 @@ const numeratorValue = document.querySelector<HTMLOutputElement>("#numerator-val
 const denominatorValue = document.querySelector<HTMLOutputElement>("#denominator-value")!;
 const customViz = document.querySelector<HTMLDivElement>("#custom-viz")!;
 const dsl = document.querySelector<HTMLElement>("#dsl")!;
+const mergeViz = document.querySelector<HTMLDivElement>("#merge-viz")!;
+const mergeButton = document.querySelector<HTMLButtonElement>("#merge-button")!;
+const mergeCopy = document.querySelector<HTMLParagraphElement>("#merge-copy")!;
+const compareViz = document.querySelector<HTMLDivElement>("#compare-viz")!;
+const compareButton = document.querySelector<HTMLButtonElement>("#compare-button")!;
+const compareCopy = document.querySelector<HTMLParagraphElement>("#compare-copy")!;
+const addViz = document.querySelector<HTMLDivElement>("#add-viz")!;
+const addButton = document.querySelector<HTMLButtonElement>("#add-button")!;
+const addCopy = document.querySelector<HTMLParagraphElement>("#add-copy")!;
 
 function continuousFractionMarkup(n: number, d: number, newLines: number[] = []) {
   const filledPercent = (n / d) * 100;
@@ -216,6 +254,57 @@ function renderCustom() {
   customViz.innerHTML = renderSvg(spec);
 }
 
+
+function labeledContinuousFraction(n: number, d: number) {
+  return `<div class="mini-row"><strong>${n}/${d}</strong>${continuousFractionMarkup(n, d)}</div>`;
+}
+
+function renderOperationDemos() {
+  mergeViz.innerHTML = labeledContinuousFraction(4, 8);
+  compareViz.innerHTML =
+    labeledContinuousFraction(1, 2) + labeledContinuousFraction(3, 4);
+  addViz.innerHTML =
+    labeledContinuousFraction(1, 4) +
+    '<div class="math-sign">+</div>' +
+    labeledContinuousFraction(2, 4);
+}
+
+mergeButton.addEventListener("click", () => {
+  const result = mergeParts(
+    { type: "fraction-bar", numerator: 4, denominator: 8 },
+    2,
+  );
+  mergeViz.innerHTML = labeledContinuousFraction(result.numerator, result.denominator);
+  mergeCopy.textContent =
+    "Two neighboring eighths become one quarter. The boundaries change, but the filled amount stays exactly the same.";
+  dsl.textContent = JSON.stringify({ type: "merge-parts", factor: 2 }, null, 2);
+});
+
+compareButton.addEventListener("click", () => {
+  const left = { type: "fraction-bar" as const, numerator: 1, denominator: 2 };
+  const right = { type: "fraction-bar" as const, numerator: 3, denominator: 4 };
+  const result = compareFractions(left, right);
+  compareViz.innerHTML =
+    labeledContinuousFraction(1, 2) +
+    '<div class="comparison-symbol">&lt;</div>' +
+    labeledContinuousFraction(3, 4);
+  compareCopy.textContent =
+    result === "less-than"
+      ? "1/2 is smaller than 3/4. Because both bars represent the same whole, the longer filled length makes the comparison visible."
+      : "The fractions are equal.";
+  dsl.textContent = JSON.stringify({ type: "compare", left, right, result }, null, 2);
+});
+
+addButton.addEventListener("click", () => {
+  const left = { type: "fraction-bar" as const, numerator: 1, denominator: 4 };
+  const right = { type: "fraction-bar" as const, numerator: 2, denominator: 4 };
+  const result = addFractions(left, right);
+  addViz.innerHTML = labeledContinuousFraction(result.numerator, result.denominator);
+  addCopy.textContent =
+    "One quarter and two quarters use the same-sized pieces, so we count 1 + 2 pieces: three quarters.";
+  dsl.textContent = JSON.stringify({ type: "add", left, right, result }, null, 2);
+});
+
 nextButton.addEventListener("click", animateToNextFrame);
 
 numeratorInput.addEventListener("input", () => {
@@ -231,3 +320,4 @@ denominatorInput.addEventListener("input", () => {
 
 renderEquivalent();
 renderCustom();
+renderOperationDemos();
