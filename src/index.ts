@@ -15,6 +15,8 @@ export type {
 
 export { normalizeFractionBar, renderFractionBarSvg } from "./fractionBar.js";
 export { compileFractionBarTimeline, splitEachPart } from "./timeline.js";
+export { addFractions, compareFractions, mergeParts } from "./fractionOperations.js";
+export type { FractionComparison } from "./fractionOperations.js";
 
 export function renderSvg(spec: MathVizSpec): string {
   switch (spec.type) {
