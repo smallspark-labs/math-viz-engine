@@ -269,14 +269,27 @@ function renderOperationDemos() {
     labeledContinuousFraction(2, 4);
 }
 
-mergeButton.addEventListener("click", () => {
+mergeButton.addEventListener("click", async () => {
   const result = mergeParts(
     { type: "fraction-bar", numerator: 4, denominator: 8 },
     2,
   );
+  mergeButton.disabled = true;
+  mergeViz.innerHTML = labeledContinuousFraction(4, 8);
+  const lines = Array.from(mergeViz.querySelectorAll(".partition-line"));
+  lines.forEach((line, index) => {
+    if (index % 2 === 0) line.classList.add("partition-line--removing");
+  });
+  requestAnimationFrame(() => {
+    mergeViz.querySelectorAll(".partition-line--removing").forEach((line) =>
+      line.classList.add("partition-line--removed"),
+    );
+  });
+  await new Promise((resolve) => setTimeout(resolve, 620));
   mergeViz.innerHTML = labeledContinuousFraction(result.numerator, result.denominator);
+  mergeButton.disabled = false;
   mergeCopy.textContent =
-    "Two neighboring eighths become one quarter. The boundaries change, but the filled amount stays exactly the same.";
+    "Two neighboring eighths become one quarter. Watch the unnecessary boundaries disappear while the filled amount stays fixed.";
   dsl.textContent = JSON.stringify({ type: "merge-parts", factor: 2 }, null, 2);
 });
 
@@ -295,13 +308,31 @@ compareButton.addEventListener("click", () => {
   dsl.textContent = JSON.stringify({ type: "compare", left, right, result }, null, 2);
 });
 
-addButton.addEventListener("click", () => {
+addButton.addEventListener("click", async () => {
   const left = { type: "fraction-bar" as const, numerator: 1, denominator: 4 };
   const right = { type: "fraction-bar" as const, numerator: 2, denominator: 4 };
   const result = addFractions(left, right);
+  addButton.disabled = true;
+  addViz.innerHTML = `
+    <div class="addition-stage">
+      <div class="addition-source addition-source--left">${labeledContinuousFraction(1, 4)}</div>
+      <div class="math-sign">+</div>
+      <div class="addition-source addition-source--right">${labeledContinuousFraction(2, 4)}</div>
+      <div class="addition-target">
+        <strong>3/4</strong>
+        <div class="whole">
+          <div class="addition-piece addition-piece--one"></div>
+          <div class="addition-piece addition-piece--two"></div>
+          ${Array.from({ length: 3 }, (_, i) => `<span class="partition-line" style="left:${(i + 1) * 25}%"></span>`).join("")}
+        </div>
+      </div>
+    </div>`;
+  requestAnimationFrame(() => addViz.querySelector(".addition-stage")?.classList.add("addition-stage--combine"));
+  await new Promise((resolve) => setTimeout(resolve, 850));
   addViz.innerHTML = labeledContinuousFraction(result.numerator, result.denominator);
+  addButton.disabled = false;
   addCopy.textContent =
-    "One quarter and two quarters use the same-sized pieces, so we count 1 + 2 pieces: three quarters.";
+    "The one-quarter piece and the two-quarter piece slide into the same whole. Because every piece is a quarter, together they occupy three quarters.";
   dsl.textContent = JSON.stringify({ type: "add", left, right, result }, null, 2);
 });
 
